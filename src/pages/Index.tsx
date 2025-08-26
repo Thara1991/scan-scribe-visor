@@ -1,13 +1,29 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from "react";
+import { LoginScreen } from "@/components/auth/LoginScreen";
+import { MainInterface } from "@/components/layout/MainInterface";
 
 const Index = () => {
+  const [currentUser, setCurrentUser] = useState<string>("");
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+
+  const handleLogin = (uid: string) => {
+    setCurrentUser(uid);
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    setCurrentUser("");
+    setIsAuthenticated(false);
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
-    </div>
+    <>
+      {!isAuthenticated ? (
+        <LoginScreen onLogin={handleLogin} />
+      ) : (
+        <MainInterface currentUser={currentUser} onLogout={handleLogout} />
+      )}
+    </>
   );
 };
 
