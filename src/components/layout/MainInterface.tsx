@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -10,11 +10,16 @@ import {
   User, 
   LogOut,
   Search,
-  Hospital
+  Hospital,
+  Clock,
+  AlertTriangle
 } from "lucide-react";
 import { EMRViewer } from "../modules/EMRViewer";
 import { EMRPrint } from "../modules/EMRPrint";
 import { AdminTools } from "../modules/AdminTools";
+import { SessionManager } from "@/lib/session";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
+import { InactivityWarning } from "@/components/ui/inactivity-warning";
 
 interface MainInterfaceProps {
   currentUser: string;
@@ -25,6 +30,49 @@ type ModuleType = "viewer" | "print" | "admin";
 
 export const MainInterface = ({ currentUser, onLogout }: MainInterfaceProps) => {
   const [activeModule, setActiveModule] = useState<ModuleType>("viewer");
+  const [sessionDuration, setSessionDuration] = useState<string>("");
+  const [showInactivityWarning, setShowInactivityWarning] = useState(false);
+  const [timeSinceActivity, setTimeSinceActivity] = useState<number>(0);
+
+  // Activity tracking
+  const handleInactivity = () => {
+    console.log('Inactivity handler called - showing warning dialog');
+    setShowInactivityWarning(true);
+  };
+
+  const handleStayActive = () => {
+    console.log('Stay active clicked - extending session');
+    setShowInactivityWarning(false);
+    SessionManager.updateActivity();
+  };
+
+  const handleForceLogout = () => {
+    console.log('Force logout clicked');
+    setShowInactivityWarning(false);
+    onLogout();
+  };
+
+  useActivityTracker(handleInactivity);
+
+  // Update session duration and activity time every minute
+  useEffect(() => {
+    const updateInfo = () => {
+      setSessionDuration(SessionManager.getSessionDuration());
+      
+      // Calculate time since last activity
+      const session = SessionManager.getSession();
+      if (session?.lastActivity) {
+        const now = new Date();
+        const lastActivity = new Date(session.lastActivity);
+        setTimeSinceActivity(now.getTime() - lastActivity.getTime());
+      }
+    };
+    
+    updateInfo(); // Initial update
+    const interval = setInterval(updateInfo, 60000); // Update every minute
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const modules = [
     {
@@ -84,6 +132,21 @@ export const MainInterface = ({ currentUser, onLogout }: MainInterfaceProps) => 
                 <span className="text-sm font-medium text-panel-foreground">{currentUser}</span>
                 <Badge variant="secondary" className="text-xs">Online</Badge>
               </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-panel rounded-lg border border-panel-border">
+                <Clock className="w-4 h-4 text-primary" />
+                <span className="text-xs text-muted-foreground">{sessionDuration}</span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  console.log('Manual test - triggering inactivity warning');
+                  handleInactivity();
+                }}
+                className="text-amber-600 hover:text-amber-700"
+              >
+                Test Warning
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -144,6 +207,20 @@ export const MainInterface = ({ currentUser, onLogout }: MainInterfaceProps) => 
             </span>
             <Separator orientation="vertical" className="h-4" />
             <span>Module: {modules.find(m => m.id === activeModule)?.name}</span>
+            <Separator orientation="vertical" className="h-4" />
+            <span className="flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              Session: {sessionDuration}
+            </span>
+            {timeSinceActivity > 60000 && (
+              <>
+                <Separator orientation="vertical" className="h-4" />
+                <span className="flex items-center gap-1 text-amber-600">
+                  <AlertTriangle className="w-3 h-3" />
+                  Inactive: {Math.floor(timeSinceActivity / 60000)}m
+                </span>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <span>Ready</span>
@@ -151,6 +228,14 @@ export const MainInterface = ({ currentUser, onLogout }: MainInterfaceProps) => 
           </div>
         </div>
       </footer>
+
+      {/* Inactivity Warning Dialog */}
+      <InactivityWarning
+        isOpen={showInactivityWarning}
+        onStayActive={handleStayActive}
+        onLogout={handleForceLogout}
+        timeRemaining={timeSinceActivity}
+      />
     </div>
   );
 };

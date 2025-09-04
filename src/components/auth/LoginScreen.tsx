@@ -5,13 +5,14 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Monitor, Shield, User } from "lucide-react";
+import { ApiService, LoginResponse } from "@/lib/api";
 
 interface LoginScreenProps {
-  onLogin: (uid: string) => void;
+  onLogin: (userData: LoginResponse) => void;
 }
 
 export const LoginScreen = ({ onLogin }: LoginScreenProps) => {
-  const [uid, setUid] = useState("");
+  const [userID, setUserID] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -21,19 +22,25 @@ export const LoginScreen = ({ onLogin }: LoginScreenProps) => {
     setError("");
     setIsLoading(true);
 
-    // Simulate authentication
-    setTimeout(() => {
-      if (uid && password) {
-        if (password === "admin" || password === "user123") {
-          onLogin(uid);
-        } else {
-          setError("Invalid credentials. Use 'admin' or 'user123' as password.");
-        }
+    try {
+      // Call the API
+      const loginResponse = await ApiService.login({
+        userID,
+        password
+      });
+      
+      // Success - pass the first user data to parent component
+      if (loginResponse && loginResponse.length > 0) {
+        onLogin(loginResponse[0]);
       } else {
-        setError("Please enter both User ID and password.");
+        setError("No user data returned from server.");
       }
+    } catch (error) {
+      console.error('Login failed:', error);
+      setError("Login failed. Please check your credentials and try again.");
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -66,11 +73,11 @@ export const LoginScreen = ({ onLogin }: LoginScreenProps) => {
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    id="uid"
+                    id="userID"
                     type="text"
                     placeholder="Enter your User ID"
-                    value={uid}
-                    onChange={(e) => setUid(e.target.value)}
+                    value={userID}
+                    onChange={(e) => setUserID(e.target.value)}
                     className="pl-10 bg-input border-border focus:ring-primary"
                     disabled={isLoading}
                   />
@@ -108,7 +115,7 @@ export const LoginScreen = ({ onLogin }: LoginScreenProps) => {
             </form>
 
             <div className="mt-4 text-center text-xs text-muted-foreground">
-              Demo credentials: Use any User ID with password "admin" or "user123"
+              Enter your credentials to access the EMR system
             </div>
           </CardContent>
         </Card>
