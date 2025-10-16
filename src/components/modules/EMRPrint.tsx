@@ -18,8 +18,14 @@ import {
   Eye,
   CheckSquare
 } from "lucide-react";
+import { PatientMainInfoResponse } from "@/lib/api";
 
-export const EMRPrint = () => {
+interface EMRPrintProps {
+  currentPatient: string;
+  patientData: PatientMainInfoResponse | null;
+}
+
+export const EMRPrint = ({ currentPatient, patientData }: EMRPrintProps) => {
   const [searchHN, setSearchHN] = useState("");
   const [selectedPatient, setSelectedPatient] = useState<string>("");
   const [filterType, setFilterType] = useState("");

@@ -10,7 +10,7 @@ import {
   User, 
   LogOut,
   Search,
-  Hospital,
+  Building2,
   Clock,
   AlertTriangle
 } from "lucide-react";
@@ -20,6 +20,7 @@ import { AdminTools } from "../modules/AdminTools";
 import { SessionManager } from "@/lib/session";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { InactivityWarning } from "@/components/ui/inactivity-warning";
+import { PatientMainInfoResponse } from "@/lib/api";
 
 interface MainInterfaceProps {
   currentUser: string;
@@ -33,6 +34,10 @@ export const MainInterface = ({ currentUser, onLogout }: MainInterfaceProps) => 
   const [sessionDuration, setSessionDuration] = useState<string>("");
   const [showInactivityWarning, setShowInactivityWarning] = useState(false);
   const [timeSinceActivity, setTimeSinceActivity] = useState<number>(0);
+  
+  // Patient state - shared across all modules
+  const [currentPatient, setCurrentPatient] = useState<string>("");
+  const [patientData, setPatientData] = useState<PatientMainInfoResponse | null>(null);
 
   // Activity tracking
   const handleInactivity = () => {
@@ -98,18 +103,37 @@ export const MainInterface = ({ currentUser, onLogout }: MainInterfaceProps) => 
   const renderActiveModule = () => {
     switch (activeModule) {
       case "viewer":
-        return <EMRViewer />;
+        return (
+          <EMRViewer 
+            currentPatient={currentPatient}
+            patientData={patientData}
+            onPatientChange={setCurrentPatient}
+            onPatientDataChange={setPatientData}
+          />
+        );
       case "print":
-        return <EMRPrint />;
+        return (
+          <EMRPrint 
+            currentPatient={currentPatient}
+            patientData={patientData}
+          />
+        );
       case "admin":
         return <AdminTools />;
       default:
-        return <EMRViewer />;
+        return (
+          <EMRViewer 
+            currentPatient={currentPatient}
+            patientData={patientData}
+            onPatientChange={setCurrentPatient}
+            onPatientDataChange={setPatientData}
+          />
+        );
     }
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Header/Menu Bar */}
       <header className="bg-toolbar border-b border-toolbar-border shadow-panel">
         <div className="px-4 py-3">
@@ -191,10 +215,8 @@ export const MainInterface = ({ currentUser, onLogout }: MainInterfaceProps) => 
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 bg-viewer p-4">
-        <div className="h-full bg-card rounded-lg border border-border shadow-panel">
-          {renderActiveModule()}
-        </div>
+      <main className="flex-1 bg-viewer min-h-0">
+        {renderActiveModule()}
       </main>
 
       {/* Status Bar */}
@@ -202,7 +224,7 @@ export const MainInterface = ({ currentUser, onLogout }: MainInterfaceProps) => 
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1">
-              <Hospital className="w-3 h-3" />
+              <Building2 className="w-3 h-3" />
               Connected to EMR Database
             </span>
             <Separator orientation="vertical" className="h-4" />
