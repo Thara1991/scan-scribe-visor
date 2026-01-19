@@ -1,39 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { LoginScreen } from "@/components/auth/LoginScreen";
 import { MainInterface } from "@/components/layout/MainInterface";
-import { LoginResponse } from "@/lib/api";
-import { SessionManager, UserSession } from "@/lib/session";
+import { LoginUser } from "@/types/auth";
 
 const Index = () => {
-  const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
+  const [currentUser, setCurrentUser] = useState<LoginUser | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Check for existing session on component mount
-  useEffect(() => {
-    const existingSession = SessionManager.getSession();
-    if (existingSession) {
-      setCurrentUser(existingSession);
-      setIsAuthenticated(true);
-    }
-    setIsLoading(false);
-  }, []);
-
-  const handleLogin = (userData: LoginResponse) => {
-    // Save session
-    SessionManager.saveSession(userData);
-    
-    // Update state
-    const session = SessionManager.getSession();
-    setCurrentUser(session);
+  const handleLogin = (userData: LoginUser) => {
+    setCurrentUser(userData);
     setIsAuthenticated(true);
   };
 
   const handleLogout = () => {
-    // Clear session
-    SessionManager.clearSession();
-    
-    // Update state
     setCurrentUser(null);
     setIsAuthenticated(false);
   };

@@ -1,16 +1,15 @@
 import { useEffect, useRef } from 'react';
-import { SessionManager } from '@/lib/session';
 
-export const useActivityTracker = (onInactivity: () => void) => {
+export const useActivityTracker = (onInactivity: () => void, onActivity?: () => void) => {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes
   // const INACTIVITY_TIMEOUT = 5000; // 5 seconds
 
   const resetTimer = () => {
-    console.log('Activity detected - resetting timer');
     
-    // Update activity in session
-    SessionManager.updateActivity();
+    if (onActivity) {
+      onActivity();
+    }
     
     // Clear existing timeout
     if (timeoutRef.current) {
@@ -25,7 +24,6 @@ export const useActivityTracker = (onInactivity: () => void) => {
   };
 
   useEffect(() => {
-    console.log('Setting up activity tracker with', INACTIVITY_TIMEOUT, 'ms timeout');
     
     // Events to track for user activity
     const events = [
@@ -58,7 +56,7 @@ export const useActivityTracker = (onInactivity: () => void) => {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [onInactivity]);
+  }, [onInactivity, onActivity]);
 
   return { resetTimer };
 };

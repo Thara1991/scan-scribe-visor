@@ -18,11 +18,11 @@ import {
   Eye,
   CheckSquare
 } from "lucide-react";
-import { PatientMainInfoResponse } from "@/lib/api";
+import { PatientMainInfo } from "@/types/patient";
 
 interface EMRPrintProps {
   currentPatient: string;
-  patientData: PatientMainInfoResponse | null;
+  patientData: PatientMainInfo | null;
 }
 
 export const EMRPrint = ({ currentPatient, patientData }: EMRPrintProps) => {

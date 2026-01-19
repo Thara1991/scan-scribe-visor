@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -17,10 +17,9 @@ import {
 import { EMRViewer } from "../modules/EMRViewer";
 import { EMRPrint } from "../modules/EMRPrint";
 import { AdminTools } from "../modules/AdminTools";
-import { SessionManager } from "@/lib/session";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { InactivityWarning } from "@/components/ui/inactivity-warning";
-import { PatientMainInfoResponse } from "@/lib/api";
+import { PatientMainInfo } from "@/types/patient";
 
 interface MainInterfaceProps {
   currentUser: string;
@@ -34,21 +33,23 @@ export const MainInterface = ({ currentUser, onLogout }: MainInterfaceProps) => 
   const [sessionDuration, setSessionDuration] = useState<string>("");
   const [showInactivityWarning, setShowInactivityWarning] = useState(false);
   const [timeSinceActivity, setTimeSinceActivity] = useState<number>(0);
+  const [sessionStart] = useState<number>(() => Date.now());
+  const [lastActivity, setLastActivity] = useState<number>(() => Date.now());
   
   // Patient state - shared across all modules
   const [currentPatient, setCurrentPatient] = useState<string>("");
-  const [patientData, setPatientData] = useState<PatientMainInfoResponse | null>(null);
+  const [patientData, setPatientData] = useState<PatientMainInfo | null>(null);
 
   // Activity tracking
-  const handleInactivity = () => {
+  const handleInactivity = useCallback(() => {
     console.log('Inactivity handler called - showing warning dialog');
     setShowInactivityWarning(true);
-  };
+  }, []);
 
   const handleStayActive = () => {
     console.log('Stay active clicked - extending session');
     setShowInactivityWarning(false);
-    SessionManager.updateActivity();
+    setLastActivity(Date.now());
   };
 
   const handleForceLogout = () => {
@@ -57,27 +58,35 @@ export const MainInterface = ({ currentUser, onLogout }: MainInterfaceProps) => 
     onLogout();
   };
 
-  useActivityTracker(handleInactivity);
+  const handleActivity = useCallback(() => {
+    setLastActivity(Date.now());
+  }, []);
+
+  useActivityTracker(handleInactivity, handleActivity);
 
   // Update session duration and activity time every minute
+  const formatDuration = (ms: number) => {
+    const totalMinutes = Math.floor(ms / (1000 * 60));
+    if (totalMinutes < 60) {
+      return `${totalMinutes}m`;
+    }
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${hours}h ${minutes}m`;
+  };
+
   useEffect(() => {
     const updateInfo = () => {
-      setSessionDuration(SessionManager.getSessionDuration());
-      
-      // Calculate time since last activity
-      const session = SessionManager.getSession();
-      if (session?.lastActivity) {
-        const now = new Date();
-        const lastActivity = new Date(session.lastActivity);
-        setTimeSinceActivity(now.getTime() - lastActivity.getTime());
-      }
+      const now = Date.now();
+      setSessionDuration(formatDuration(now - sessionStart));
+      setTimeSinceActivity(now - lastActivity);
     };
-    
+
     updateInfo(); // Initial update
     const interval = setInterval(updateInfo, 60000); // Update every minute
-    
+
     return () => clearInterval(interval);
-  }, []);
+  }, [sessionStart, lastActivity]);
 
   const modules = [
     {

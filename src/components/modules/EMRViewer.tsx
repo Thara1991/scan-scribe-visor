@@ -5,7 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { ApiService, PatientMainInfoResponse } from "@/lib/api";
+import { PatientMainInfo } from "@/types/patient";
+import { fetchPatientImageEmrList } from "@/api/aPatient";
 import { 
   Search, 
   FileText, 
@@ -31,9 +32,9 @@ import {
 
 interface EMRViewerProps {
   currentPatient: string;
-  patientData: PatientMainInfoResponse | null;
+  patientData: PatientMainInfo | null;
   onPatientChange: (patient: string) => void;
-  onPatientDataChange: (data: PatientMainInfoResponse | null) => void;
+  onPatientDataChange: (data: PatientMainInfo | null) => void;
 }
 
 export const EMRViewer = ({ 
@@ -346,15 +347,6 @@ export const EMRViewer = ({
   };
 
 
-  // Sync search input with current patient only when currentPatient actually changes
-  // (not when user is editing the searchHN field)
-  React.useEffect(() => {
-    if (currentPatient !== lastCurrentPatient.current) {
-      setSearchHN(currentPatient);
-      lastCurrentPatient.current = currentPatient;
-    }
-  }, [currentPatient]);
-
   // Mock data
   const mockPatient = {
     hn: "HN001234",
@@ -409,22 +401,52 @@ export const EMRViewer = ({
     onPatientDataChange(null);
 
     try {
-      // Use GET method
-      const response = await ApiService.getPatientMainInfoGET(searchHN.trim());
-      
-      // API returns an array, so we need to get the first element
-      const newPatientData = Array.isArray(response) ? response[0] : response;
-      
-      if (!newPatientData) {
-        throw new Error('No patient data found');
+      const response = await fetchPatientImageEmrList(searchHN.trim());
+      const data = Array.isArray(response) ? response[0] : response;
+
+      if (data && typeof data === "object") {
+        const record = data as Record<string, unknown>;
+
+        if ("hn" in record || "patNam" in record || "patid" in record) {
+          const mappedPatient: PatientMainInfo = {
+            HN: String(record.hn ?? searchHN.trim()),
+            ShowHN: String(record.patid ?? record.hn ?? searchHN.trim()),
+            PatName: String(record.patNam ?? "Unknown"),
+            Age: String(record.sexAge ?? "-"),
+            LastVisit: "-",
+            CurrentVist: String(record.birDte ?? "-")
+          };
+          onPatientDataChange(mappedPatient);
+        } else if ("HN" in record) {
+          onPatientDataChange(record as unknown as PatientMainInfo);
+        } else {
+          // Fallback to minimal data when API response shape is unknown
+          const fallbackPatient: PatientMainInfo = {
+            HN: searchHN.trim(),
+            ShowHN: searchHN.trim(),
+            PatName: "Unknown",
+            Age: "-",
+            LastVisit: "-",
+            CurrentVist: "-"
+          };
+          onPatientDataChange(fallbackPatient);
+        }
+      } else {
+        const fallbackPatient: PatientMainInfo = {
+          HN: searchHN.trim(),
+          ShowHN: searchHN.trim(),
+          PatName: "Unknown",
+          Age: "-",
+          LastVisit: "-",
+          CurrentVist: "-"
+        };
+        onPatientDataChange(fallbackPatient);
       }
-      
-      onPatientDataChange(newPatientData);
+
       onPatientChange(searchHN.trim());
-      console.log('✅ Patient data loaded via GET:', newPatientData);
     } catch (error) {
-      console.error('❌ Patient search failed:', error);
-      setError(error instanceof Error ? error.message : 'Failed to search patient');
+      console.error("❌ Patient search failed:", error);
+      setError(error instanceof Error ? error.message : "Failed to search patient");
       onPatientChange("");
     } finally {
       setIsLoading(false);
@@ -432,9 +454,9 @@ export const EMRViewer = ({
   };
 
   return (
-    <div className="h-full flex bg-card border border-border shadow-panel min-h-0">
+    <div className="h-full flex bg-card border border-border shadow-panel min-h-0 relative">
       {/* Left Panel - Patient Search and Document Tree */}
-      <div className="w-80 bg-panel border-r border-panel-border flex flex-col">
+      <div className="w-80 bg-panel border-r border-panel-border flex flex-col relative z-20">
         {/* Patient Search */}
         <div className="p-4 border-b border-panel-border">
           <div className="space-y-3">
@@ -442,7 +464,6 @@ export const EMRViewer = ({
             <div className="flex gap-2">
               <Input
                 placeholder="Enter Hospital Number (HN)"
-                value={searchHN}
                 onChange={(e) => setSearchHN(e.target.value)}
                 className="flex-1 bg-input border-border"
                 onKeyPress={(e) => e.key === "Enter" && handleSearch()}
@@ -488,10 +509,6 @@ export const EMRViewer = ({
                   <Badge variant="outline" className="font-mono">{patientData.HN}</Badge>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Show HN:</span>
-                  <Badge variant="outline" className="font-mono">{patientData.ShowHN}</Badge>
-                </div>
-                <div className="flex justify-between">
                   <span className="text-muted-foreground">Name:</span>
                   <span className="font-medium">{patientData.PatName}</span>
                 </div>
@@ -500,14 +517,7 @@ export const EMRViewer = ({
                   <span>{patientData.Age}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Last Visit:</span>
-                  <span className="flex items-center gap-1">
-                    <Calendar className="w-3 h-3" />
-                    {patientData.LastVisit}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Current Visit:</span>
+                  <span className="text-muted-foreground">Birth Date:</span>
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
                     {patientData.CurrentVist}
@@ -558,7 +568,7 @@ export const EMRViewer = ({
       </div>
 
       {/* Right Panel - Image Viewer and Tools */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col relative z-0">
         {/* Toolbar */}
         <div className="bg-toolbar border-b border-toolbar-border p-3">
           <div className="flex items-center justify-between">

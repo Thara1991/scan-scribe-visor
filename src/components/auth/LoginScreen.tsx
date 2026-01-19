@@ -5,10 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Monitor, Shield, User } from "lucide-react";
-import { ApiService, LoginResponse } from "@/lib/api";
+import { LoginUser } from "@/types/auth";
 
 interface LoginScreenProps {
-  onLogin: (userData: LoginResponse) => void;
+  onLogin: (userData: LoginUser) => void;
 }
 
 export const LoginScreen = ({ onLogin }: LoginScreenProps) => {
@@ -17,30 +17,21 @@ export const LoginScreen = ({ onLogin }: LoginScreenProps) => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
-    try {
-      // Call the API
-      const loginResponse = await ApiService.login({
-        userID,
-        password
-      });
-      
-      // Success - pass the first user data to parent component
-      if (loginResponse && loginResponse.length > 0) {
-        onLogin(loginResponse[0]);
-      } else {
-        setError("No user data returned from server.");
-      }
-    } catch (error) {
-      console.error('Login failed:', error);
-      setError("Login failed. Please check your credentials and try again.");
-    } finally {
-      setIsLoading(false);
-    }
+    // API binding removed - directly proceed to next page
+    // Create temporary user data to pass to parent component
+    const tempUserData: LoginUser = {
+      userID: userID || 'temp_user',
+      userName: userID || 'Temporary User'
+    };
+    
+    // Proceed to next page
+    onLogin(tempUserData);
+    setIsLoading(false);
   };
 
   return (

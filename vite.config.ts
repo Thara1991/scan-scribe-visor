@@ -7,6 +7,14 @@ export default defineConfig({
   server: {
     host: "::",
     port: 8091,
+    proxy: {
+      "/api": {
+        target: "http://localhost:8082",
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api/, ""),
+      },
+    },
   },
   plugins: [
     react(),
